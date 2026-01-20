@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hexapod Vibration Control</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #1a1a2e;
+            --bg-card: #16213e;
+            --accent: #0f3460;
+            --highlight: #e94560;
+            --text: #eaeaea;
+            --text-dim: #a0a0a0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #0f0f23 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #e94560, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: var(--text-dim);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card h2 {
+            color: var(--highlight);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card h2::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: var(--highlight);
+            border-radius: 2px;
+        }
+
+        .upload-zone {
+            border: 2px dashed var(--accent);
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--highlight);
+            background: rgba(233, 69, 96, 0.1);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--highlight);
+            background: rgba(233, 69, 96, 0.2);
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: var(--accent);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .metric-label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 5px;
+        }
+
+        .slider-container {
+            padding: 20px 10px;
+            background: var(--accent);
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        #time-slider {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            background: linear-gradient(90deg, var(--highlight) 0%, #ff6b6b 100%);
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        #time-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        #time-slider::-webkit-slider-thumb:active {
+            cursor: grabbing;
+        }
+
+        .chart-container {
+            height: 350px;
+            margin-bottom: 15px;
+        }
+
+        .viz-container {
+            height: 500px;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .control-group input[type="number"] {
+            width: 120px;
+            padding: 8px 12px;
+            background: var(--accent);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--highlight), #ff6b6b);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--accent);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background: #1a4a7a;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .gcode-preview {
+            background: #0d1117;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre;
+            color: #7ee787;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status-message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .status-success {
+            background: rgba(46, 160, 67, 0.2);
+            border: 1px solid #2ea043;
+            color: #7ee787;
+        }
+
+        .status-error {
+            background: rgba(248, 81, 73, 0.2);
+            border: 1px solid #f85149;
+            color: #ffa198;
+        }
+
+        .status-info {
+            background: rgba(56, 139, 253, 0.2);
+            border: 1px solid #388bfd;
+            color: #79c0ff;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.8rem;
+            }
+
+            .metrics-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔧 Hexapod Vibration Control</h1>
+            <p>Standalone Browser Application - No Server Required</p>
+        </header>
+
+        <div class="page-tabs" style="display:flex; gap:15px; margin-bottom:25px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom:15px;">
+            <button class="btn btn-primary" id="page-signal-analysis">📊 Signal Analysis</button>
+            <button class="btn btn-secondary" id="page-system-id">🔄 System Identification</button>
+        </div>
+
+        <div id="page-content-signal" class="page-content">
+            <div class="card">
+                <h2>1. Choose Data Source</h2>
+                <div class="tabs" style="display:flex; gap:10px; margin-bottom:15px;">
+                    <button class="btn btn-primary" id="tab-upload">Upload CSV</button>
+                    <button class="btn btn-secondary" id="tab-create">Create Signal</button>
+                </div>
+
+                <div id="panel-upload">
+                    <div class="upload-zone" id="upload-zone">
+                        <input type="file" id="file-input" accept=".csv">
+                        <p>📁 Drag & drop your CSV file here, or click to browse</p>
+                        <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 10px;">
+                            Expected columns: Time, AccX, AccY, AccZ
+                        </p>
+                    </div>
+                </div>
+
+                <div id="panel-create" class="hidden">
+                    <div class="controls-row">
+                        <div class="control-group">
+                            <label>Duration (s)</label>
+                            <input type="number" id="gen-duration" value="10" min="1" max="60" style="width:100px">
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:15px;">
+                        <div style="background:rgba(52, 152, 219, 0.1); padding:15px; border-radius:8px; border:1px solid #3498db;">
+                            <h3 style="color:#3498db; margin-bottom:10px; font-size:1.1rem">X Axis</h3>
+                            <div class="control-group">
+                                <label>Freq (Hz)</label>
+                                <input type="number" id="freq-x" value="0.5" step="0.1" style="width:100%">
+                            </div>
+                            <div class="control-group" style="margin-top:10px;">
+                                <label>Amp (G)</label>
+                                <input type="number" id="amp-x" value="1.0" step="0.1" style="width:100%">
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(230, 126, 34, 0.1); padding:15px; border-radius:8px; border:1px solid #e67e22;">
+                            <h3 style="color:#e67e22; margin-bottom:10px; font-size:1.1rem">Y Axis</h3>
+                            <div class="control-group">
+                                <label>Freq (Hz)</label>
+                                <input type="number" id="freq-y" value="0" step="0.1" style="width:100%">
+                            </div>
+                            <div class="control-group" style="margin-top:10px;">
+                                <label>Amp (G)</label>
+                                <input type="number" id="amp-y" value="0" step="0.1" style="width:100%">
+                            </div>
+                        </div>
+
+                        <div style="background:rgba(46, 204, 113, 0.1); padding:15px; border-radius:8px; border:1px solid #2ecc71;">
+                            <h3 style="color:#2ecc71; margin-bottom:10px; font-size:1.1rem">Z Axis</h3>
+                            <div class="control-group">
+                                <label>Freq (Hz)</label>
+                                <input type="number" id="freq-z" value="0" step="0.1" style="width:100%">
+                            </div>
+                            <div class="control-group" style="margin-top:10px;">
+                                <label>Amp (G)</label>
+                                <input type="number" id="amp-z" value="0" step="0.1" style="width:100%">
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" style="width:100%" id="btn-create-signal">Generate Sine Wave Signal</button>
+                </div>
+
+                <div id="upload-status" class="status-message hidden" style="margin-top:15px"></div>
+            </div>
+
+            <div id="analysis-section" class="hidden">
+                <div class="card">
+                    <h2>Analysis Results</h2>
+                    <div class="metrics-row" id="metrics-row"></div>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h2 style="margin-bottom:0;">Signal Visualization</h2>
+                        <div class="tabs" style="display:flex; gap:10px;">
+                            <button class="btn btn-primary" id="chart-tab-time" style="padding:5px 15px; font-size:0.9rem;">Time</button>
+                            <button class="btn btn-secondary" id="chart-tab-freq" style="padding:5px 15px; font-size:0.9rem;">Frequency</button>
+                        </div>
+                    </div>
+
+                    <div id="signal-chart" class="chart-container"></div>
+
+                    <div class="slider-container" id="time-slider-container">
+                        <div class="slider-label">
+                            <span>Time Control</span>
+                            <span id="current-time">t = 0.0000s (Index: 0)</span>
+                        </div>
+                        <input type="range" id="time-slider" min="0" max="100" value="0">
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>Hexapod Visualization</h2>
+                    <div class="controls-row">
+                        <div class="control-group">
+                            <label>Visual Scale (1G = X mm)</label>
+                            <input type="number" id="visual-scale" value="50" min="1" max="500">
+                        </div>
+                        <button class="btn btn-secondary" id="btn-load-animation">Load Animation</button>
+                        <button class="btn btn-secondary" id="btn-play" disabled>▶ Play</button>
+                        <button class="btn btn-secondary" id="btn-pause" disabled>⏸ Pause</button>
+                    </div>
+                    <div id="hexapod-chart" class="viz-container"></div>
+                </div>
+
+                <div class="card">
+                    <h2>G-Code Generation</h2>
+                    <div class="controls-row">
+                        <button class="btn btn-primary" id="btn-generate-gcode">Generate Motion Profile</button>
+                        <button class="btn btn-secondary" id="btn-download-gcode" disabled>📥 Download G-Code</button>
+                    </div>
+                    <div id="gcode-status" class="status-message hidden"></div>
+                    <div id="gcode-preview" class="gcode-preview hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="page-content-sysid" class="page-content hidden">
+            <div class="card">
+                <h2>🔄 System Identification</h2>
+                <p style="color: var(--text-dim); margin-bottom: 20px;">
+                    Upload an <strong>Input Signal</strong> (commanded) and <strong>Output Signal</strong> (measured) to calculate compensation matrix.
+                </p>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <h3 style="color: #3498db; margin-bottom: 10px;">📥 Input Signal</h3>
+                        <div class="upload-zone" id="sysid-input-zone" style="min-height: 120px;">
+                            <input type="file" id="sysid-input-file" accept=".csv" style="display: none;">
+                            <p>📁 Drop Input CSV</p>
+                            <p id="sysid-input-filename" style="font-size: 0.85rem; color: var(--accent); margin-top: 5px;"></p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 style="color: #e67e22; margin-bottom: 10px;">📤 Output Signal</h3>
+                        <div class="upload-zone" id="sysid-output-zone" style="min-height: 120px;">
+                            <input type="file" id="sysid-output-file" accept=".csv" style="display: none;">
+                            <p>📁 Drop Output CSV</p>
+                            <p id="sysid-output-filename" style="font-size: 0.85rem; color: var(--accent); margin-top: 5px;"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="btn-calculate-matrix" style="width: 100%; font-size: 1.1rem; padding: 15px;">
+                    🧮 Calculate Transformation Matrix
+                </button>
+
+                <div id="sysid-status" class="status-message hidden" style="margin-top: 15px;"></div>
+            </div>
+
+            <div id="sysid-results" class="card hidden">
+                <h2>📊 Analysis Results</h2>
+
+                <div class="metrics-row" style="margin-bottom: 20px;">
+                    <div class="metric">
+                        <div class="metric-value" id="gain-x">-</div>
+                        <div class="metric-label">Gain X</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="gain-y">-</div>
+                        <div class="metric-label">Gain Y</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-value" id="gain-z">-</div>
+                        <div class="metric-label">Gain Z</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 15px;">Compensation Matrix</h3>
+                <div id="matrix-display" style="background: rgba(22, 33, 62, 0.8); border-radius: 10px; padding: 20px; font-family: 'Courier New', monospace; font-size: 1.1rem; text-align: center; border: 1px solid rgba(255,255,255,0.1);"></div>
+
+                <div style="margin-top: 20px; padding: 15px; background: rgba(46, 204, 113, 0.1); border-radius: 8px; border-left: 4px solid #2ecc71;">
+                    <h4 style="color: #2ecc71; margin-bottom: 10px;">💡 Interpretation</h4>
+                    <p id="matrix-interpretation" style="color: var(--text-dim); line-height: 1.6;"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== GLOBAL STATE ==========
+        let signalData = null;
+        let currentIndex = 0;
+        let animationFrameId = null;
+        let isPlaying = false;
+        let generatedGCode = '';
+        let sysidInputData = null;
+        let sysidOutputData = null;
+
+        const BASE_RADIUS = 200;
+        const PLATFORM_RADIUS = 150;
+        const CRANK_LENGTH = 50;
+        const ROD_LENGTH = 280;
+
+        // ========== CSV PARSING ==========
+        function parseCSV(text) {
+            const lines = text.trim().split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            const data = {};
+            
+            headers.forEach(h => data[h] = []);
+            
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                headers.forEach((h, idx) => {
+                    data[h].push(parseFloat(values[idx]));
+                });
+            }
+            
+            return data;
+        }
+
+        // ========== FFT IMPLEMENTATION ==========
+        function fft(signal) {
+            const n = signal.length;
+            if (n <= 1) return signal.map(x => [x, 0]);
+            
+            const even = fft(signal.filter((_, i) => i % 2 === 0));
+            const odd = fft(signal.filter((_, i) => i % 2 === 1));
+            
+            const result = new Array(n);
+            for (let k = 0; k < n / 2; k++) {
+                const angle = -2 * Math.PI * k / n;
+                const tReal = Math.cos(angle) * odd[k][0] - Math.sin(angle) * odd[k][1];
+                const tImag = Math.cos(angle) * odd[k][1] + Math.sin(angle) * odd[k][0];
+                
+                result[k] = [even[k][0] + tReal, even[k][1] + tImag];
+                result[k + n/2] = [even[k][0] - tReal, even[k][1] - tImag];
+            }
+            return result;
+        }
+
+        function computeFFT(data) {
+            const n = data.length;
+            let paddedN = Math.pow(2, Math.ceil(Math.log2(n)));
+            const padded = [...data, ...new Array(paddedN - n).fill(0)];
+            
+            const fftResult = fft(padded);
+            const magnitudes = fftResult.slice(0, paddedN/2).map(([r, i]) => 
+                2.0 / n * Math.sqrt(r*r + i*i)
+            );
+            
+            return magnitudes;
+        }
+
+        function analyzeVibration(data) {
+            const dt = data.Time[1] - data.Time[0];
+            const sampleRate = 1.0 / dt;
+            const n = data.Time.length;
+            
+            const freqs = [];
+            for (let i = 0; i < n/2; i++) {
+                freqs.push(i * sampleRate / n);
+            }
+            
+            const results = {};
+            ['AccX', 'AccY', 'AccZ'].forEach(axis => {
+                const spectrum = computeFFT(data[axis]);
+                const maxIdx = spectrum.indexOf(Math.max(...spectrum));
+                
+                results[axis] = {
+                    peak_frequency: freqs[maxIdx] || 0,
+                    peak_amplitude: spectrum[maxIdx] || 0,
+                    spectrum: spectrum.slice(0, Math.min(500, spectrum.length))
+                };
+            });
+            
+            results.freqs = freqs.slice(0, Math.min(500, freqs.length));
+            
+            return results;
+        }
+
+        // ========== FILE UPLOAD HANDLERS ==========
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) handleFile(fileInput.files[0]);
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const csvData = parseCSV(e.target.result);
+                    
+                    if (!csvData.Time || !csvData.AccX || !csvData.AccY || !csvData.AccZ) {
+                        showStatus('upload-status', 'Error: CSV must have Time, AccX, AccY, AccZ columns', 'error');
+                        return;
+                    }
+                    
+                    processSignalData(csvData);
+                    showStatus('upload-status', `✓ Loaded ${csvData.Time.length} data points`, 'success');
+                } catch (err) {
+                    showStatus('upload-status', `Error parsing CSV: ${err.message}`, 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // ========== SIGNAL GENERATION ==========
+        document.getElementById('btn-create-signal').addEventListener('click', () => {
+            const duration = parseFloat(document.getElementById('gen-duration').value);
+            const freqX = parseFloat(document.getElementById('freq-x').value);
+            const ampX = parseFloat(document.getElementById('amp-x').value);
+            const freqY = parseFloat(document.getElementById('freq-y').value);
+            const ampY = parseFloat(document.getElementById('amp-y').value);
+            const freqZ = parseFloat(document.getElementById('freq-z').value);
+            const ampZ = parseFloat(document.getElementById('amp-z').value);
+            
+            const sampleRate = 100;
+            const numPoints = duration * sampleRate;
+            
+            const csvData = {
+                Time: [],
+                AccX: [],
+                AccY: [],
+                AccZ: []
+            };
+            
+            for (let i = 0; i < numPoints; i++) {
+                const t = i / sampleRate;
+                csvData.Time.push(t);
+                csvData.AccX.push(ampX * Math.sin(2 * Math.PI * freqX * t));
+                csvData.AccY.push(ampY * Math.sin(2 * Math.PI * freqY * t));
+                csvData.AccZ.push(ampZ * Math.sin(2 * Math.PI * freqZ * t));
+            }
+            
+            processSignalData(csvData);
+            showStatus('upload-status', `✓ Generated ${numPoints} data points`, 'success');
+        });
+
+        function processSignalData(csvData) {
+            const fftData = analyzeVibration(csvData);
+            
+            signalData = {
+                time: csvData.Time,
+                accX: csvData.AccX,
+                accY: csvData.AccY,
+                accZ: csvData.AccZ,
+                tx: csvData.AccX,
+                ty: csvData.AccY,
+                tz: csvData.AccZ,
+                rx: new Array(csvData.Time.length).fill(0),
+                ry: new Array(csvData.Time.length).fill(0),
+                rz: new Array(csvData.Time.length).fill(0),
+                rows: csvData.Time.length,
+                max_acc: {
+                    X: Math.max(...csvData.AccX.map(Math.abs)),
+                    Y: Math.max(...csvData.AccY.map(Math.abs)),
+                    Z: Math.max(...csvData.AccZ.map(Math.abs))
+                },
+                freq_data: {
+                    AccX: fftData.AccX,
+                    AccY: fftData.AccY,
+                    AccZ: fftData.AccZ
+                },
+                fft_spectrum: {
+                    freqs: fftData.freqs,
+                    AccX: fftData.AccX.spectrum,
+                    AccY: fftData.AccY.spectrum,
+                    AccZ: fftData.AccZ.spectrum
+                }
+            };
+            
+            document.getElementById('analysis-section').classList.remove('hidden');
+            updateMetrics();
+            updateSignalChart();
+            updateHexapodVisualization();
+            
+            const timeSlider = document.getElementById('time-slider');
+            timeSlider.max = signalData.time.length - 1;
+            timeSlider.value = 0;
+            currentIndex = 0;
+        }
+
+        function showStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.textContent = message;
+            el.className = `status-message status-${type}`;
+            el.classList.remove('hidden');
+        }
+
+        function updateMetrics() {
+            const metrics = [
+                { label: 'Max Acc X (G)', value: signalData.max_acc.X.toFixed(4) },
+                { label: 'Max Acc Y (G)', value: signalData.max_acc.Y.toFixed(4) },
+                { label: 'Max Acc Z (G)', value: signalData.max_acc.Z.toFixed(4) },
+                { label: 'Peak Freq X (Hz)', value: signalData.freq_data.AccX.peak_frequency.toFixed(2) },
+                { label: 'Peak Freq Y (Hz)', value: signalData.freq_data.AccY.peak_frequency.toFixed(2) },
+                { label: 'Peak Freq Z (Hz)', value: signalData.freq_data.AccZ.peak_frequency.toFixed(2) },
+            ];
+
+            document.getElementById('metrics-row').innerHTML = metrics.map(m => `
+                <div class="metric">
+                    <div class="metric-value">${m.value}</div>
+                    <div class="metric-label">${m.label}</div>
+                </div>
+            `).join('');
+        }
+
+        // ========== CHART CONTROLS ==========
+        let currentChartMode = 'time';
+
+        document.getElementById('chart-tab-time').addEventListener('click', () => {
+            currentChartMode = 'time';
+            document.getElementById('chart-tab-time').className = 'btn btn-primary';
+            document.getElementById('chart-tab-freq').className = 'btn btn-secondary';
+            document.getElementById('time-slider-container').classList.remove('hidden');
+            updateSignalChart();
+        });
+
+        document.getElementById('chart-tab-freq').addEventListener('click', () => {
+            currentChartMode = 'freq';
+            document.getElementById('chart-tab-freq').className = 'btn btn-primary';
+            document.getElementById('chart-tab-time').className = 'btn btn-secondary';
+            document.getElementById('time-slider-container').classList.add('hidden');
+            updateSignalChart();
+        });
+
+        function updateSignalChart() {
+            if (!signalData) return;
+
+            let traces = [];
+            let layout = {};
+
+            if (currentChartMode === 'time') {
+                traces = [
+                    { x: signalData.time, y: signalData.accX, name: 'AccX', line: { color: '#3498db', width: 2 } },
+                    { x: signalData.time, y: signalData.accY, name: 'AccY', line: { color: '#e67e22', width: 2 } },
+                    { x: signalData.time, y: signalData.accZ, name: 'AccZ', line: { color: '#2ecc71', width: 2 } },
+                ];
+
+                const currentTime = signalData.time[currentIndex];
+
+                layout = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(22, 33, 62, 0.8)',
+                    font: { color: '#eaeaea' },
+                    xaxis: { title: 'Time (s)', gridcolor: 'rgba(255,255,255,0.1)' },
+                    yaxis: { title: 'Acceleration (G)', gridcolor: 'rgba(255,255,255,0.1)' },
+                    margin: { t: 20, r: 20, b: 50, l: 60 },
+                    showlegend: true,
+                    legend: { orientation: 'h', y: 1.1 },
+                    shapes: [{
+                        type: 'line',
+                        x0: currentTime,
+                        x1: currentTime,
+                        y0: 0,
+                        y1: 1,
+                        yref: 'paper',
+                        line: { color: '#e94560', width: 3, dash: 'dash' }
+                    }]
+                };
+            } else {
+                if (signalData.fft_spectrum) {
+                    traces = [
+                        { x: signalData.fft_spectrum.freqs, y: signalData.fft_spectrum.AccX, name: 'AccX', line: { color: '#3498db', width: 2 } },
+                        { x: signalData.fft_spectrum.freqs, y: signalData.fft_spectrum.AccY, name: 'AccY', line: { color: '#e67e22', width: 2 } },
+                        { x: signalData.fft_spectrum.freqs, y: signalData.fft_spectrum.AccZ, name: 'AccZ', line: { color: '#2ecc71', width: 2 } },
+                    ];
+                }
+
+                layout = {
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(22, 33, 62, 0.8)',
+                    font: { color: '#eaeaea' },
+                    xaxis: { title: 'Frequency (Hz)', gridcolor: 'rgba(255,255,255,0.1)' },
+                    yaxis: { title: 'Amplitude', gridcolor: 'rgba(255,255,255,0.1)' },
+                    margin: { t: 20, r: 20, b: 50, l: 60 },
+                    showlegend: true,
+                    legend: { orientation: 'h', y: 1.1 }
+                };
+            }
+
+            Plotly.react('signal-chart', traces, layout, { responsive: true });
+        }
+
+        // ========== TIME SLIDER ==========
+        const timeSlider = document.getElementById('time-slider');
+        timeSlider.addEventListener('input', () => {
+            currentIndex = parseInt(timeSlider.value);
+            updateTimeDisplay();
+            updateSignalChartMarker();
+        });
+
+        timeSlider.addEventListener('change', () => {
+            updateHexapodVisualization();
+        });
+
+        function updateTimeDisplay() {
+            if (!signalData) return;
+            const t = signalData.time[currentIndex];
+            document.getElementById('current-time').textContent = `t = ${t.toFixed(4)}s (Index: ${currentIndex})`;
+        }
+
+        function updateSignalChartMarker() {
+            if (!signalData || currentChartMode !== 'time') return;
+            const currentTime = signalData.time[currentIndex];
+            Plotly.relayout('signal-chart', {
+                'shapes[0].x0': currentTime,
+                'shapes[0].x1': currentTime
+            });
+        }
+
+        // ========== HEXAPOD VISUALIZATION ==========
+        function calculateHexapodGeometry(tx, ty, tz, rx, ry, rz) {
+            const basePoints = [];
+            const platformPoints = [];
+            const elbowPoints = [];
+
+            for (let i = 0; i < 6; i++) {
+                const angleBase = (i * 60 + (i % 2 === 0 ? -15 : 15)) * Math.PI / 180;
+                const anglePlat = (i * 60 + (i % 2 === 0 ? 15 : -15)) * Math.PI / 180;
+
+                basePoints.push({
+                    x: BASE_RADIUS * Math.cos(angleBase),
+                    y: BASE_RADIUS * Math.sin(angleBase),
+                    z: 0
+                });
+
+                platformPoints.push({
+                    x: PLATFORM_RADIUS * Math.cos(anglePlat) + tx,
+                    y: PLATFORM_RADIUS * Math.sin(anglePlat) + ty,
+                    z: tz
+                });
+
+                const dx = platformPoints[i].x - basePoints[i].x;
+                const dy = platformPoints[i].y - basePoints[i].y;
+                const dz = platformPoints[i].z - basePoints[i].z;
+                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+                const ratio = CRANK_LENGTH / dist;
+
+                elbowPoints.push({
+                    x: basePoints[i].x + dx * ratio,
+                    y: basePoints[i].y + dy * ratio,
+                    z: basePoints[i].z + dz * ratio + CRANK_LENGTH * 0.5
+                });
+            }
+
+            return { basePoints, platformPoints, elbowPoints };
+        }
+
+        function updateHexapodVisualization() {
+            if (!signalData) return;
+
+            const scale = parseFloat(document.getElementById('visual-scale').value) || 50;
+
+            const tx = signalData.tx[currentIndex] * scale;
+            const ty = signalData.ty[currentIndex] * scale;
+            const tz = (signalData.tz[currentIndex] * scale) + 300;
+            const rx = signalData.rx[currentIndex];
+            const ry = signalData.ry[currentIndex];
+            const rz = signalData.rz[currentIndex];
+
+            const { basePoints, platformPoints, elbowPoints } = calculateHexapodGeometry(tx, ty, tz, rx, ry, rz);
+
+            const traces = [];
+
+            const baseX = basePoints.map(p => p.x).concat(basePoints[0].x);
+            const baseY = basePoints.map(p => p.y).concat(basePoints[0].y);
+            const baseZ = basePoints.map(p => p.z).concat(basePoints[0].z);
+            traces.push({
+                type: 'scatter3d',
+                mode: 'lines+markers',
+                x: baseX, y: baseY, z: baseZ,
+                line: { color: '#333', width: 8 },
+                marker: { size: 8, color: '#333' },
+                name: 'Base'
+            });
+
+            traces.push({
+                type: 'mesh3d',
+                x: platformPoints.map(p => p.x),
+                y: platformPoints.map(p => p.y),
+                z: platformPoints.map(p => p.z),
+                color: 'cyan',
+                opacity: 0.7,
+                name: 'Platform'
+            });
+
+            const platX = platformPoints.map(p => p.x).concat(platformPoints[0].x);
+            const platY = platformPoints.map(p => p.y).concat(platformPoints[0].y);
+            const platZ = platformPoints.map(p => p.z).concat(platformPoints[0].z);
+            traces.push({
+                type: 'scatter3d',
+                mode: 'lines',
+                x: platX, y: platY, z: platZ,
+                line: { color: '#3498db', width: 6 },
+                name: 'Platform Edge'
+            });
+
+            for (let i = 0; i < 6; i++) {
+                traces.push({
+                    type: 'scatter3d',
+                    mode: 'markers',
+                    x: [basePoints[i].x],
+                    y: [basePoints[i].y],
+                    z: [basePoints[i].z],
+                    marker: { size: 10, color: '#e74c3c' },
+                    showlegend: false
+                });
+
+                traces.push({
+                    type: 'scatter3d',
+                    mode: 'lines',
+                    x: [basePoints[i].x, elbowPoints[i].x],
+                    y: [basePoints[i].y, elbowPoints[i].y],
+                    z: [basePoints[i].z, elbowPoints[i].z],
+                    line: { color: '#e74c3c', width: 8 },
+                    showlegend: false
+                });
+
+                traces.push({
+                    type: 'scatter3d',
+                    mode: 'lines',
+                    x: [elbowPoints[i].x, platformPoints[i].x],
+                    y: [elbowPoints[i].y, platformPoints[i].y],
+                    z: [elbowPoints[i].z, platformPoints[i].z],
+                    line: { color: '#2ecc71', width: 5 },
+                    showlegend: false
+                });
+            }
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                scene: {
+                    bgcolor: 'rgba(22, 33, 62, 0.8)',
+                    xaxis: { range: [-400, 400], title: 'X', gridcolor: 'rgba(255,255,255,0.1)' },
+                    yaxis: { range: [-400, 400], title: 'Y', gridcolor: 'rgba(255,255,255,0.1)' },
+                    zaxis: { range: [0, 500], title: 'Z', gridcolor: 'rgba(255,255,255,0.1)' },
+                    aspectratio: { x: 1, y: 1, z: 0.6 },
+                    camera: { eye: { x: 1.5, y: 1.5, z: 1 } }
+                },
+                margin: { t: 0, r: 0, b: 0, l: 0 },
+                showlegend: false
+            };
+
+            Plotly.react('hexapod-chart', traces, layout, { responsive: true });
+        }
+
+        document.getElementById('visual-scale').addEventListener('change', () => {
+            updateHexapodVisualization();
+        });
+
+        // ========== G-CODE GENERATION ==========
+        function inverseKinematics(tx, ty, tz, rx, ry, rz) {
+            return [tx, ty, tz, rx, ry, rz];
+        }
+
+        document.getElementById('btn-generate-gcode').addEventListener('click', () => {
+            if (!signalData) {
+                showStatus('gcode-status', 'Please load signal data first', 'error');
+                return;
+            }
+
+            showStatus('gcode-status', 'Generating G-Code...', 'info');
+
+            const dt = signalData.time[1] - signalData.time[0];
+            const fVal = 60.0 / dt;
+
+            let gcode = "%\nO1000 (Hexapod Vibration Pattern)\nG90 G93 G21 (Absolute, Inverse Time, Millimeters)\n\n";
+
+            for (let i = 0; i < signalData.time.length; i++) {
+                const motors = inverseKinematics(
+                    signalData.tx[i],
+                    signalData.ty[i],
+                    signalData.tz[i],
+                    signalData.rx[i],
+                    signalData.ry[i],
+                    signalData.rz[i]
+                );
+
+                const line = `G1 X${motors[0].toFixed(4)} Y${motors[1].toFixed(4)} Z${motors[2].toFixed(4)} A${motors[3].toFixed(4)} B${motors[4].toFixed(4)} C${motors[5].toFixed(4)} F${fVal.toFixed(4)}\n`;
+                gcode += line;
+            }
+
+            gcode += "M30 (End of program)\n%";
+
+            generatedGCode = gcode;
+
+            const preview = gcode.split('\n').slice(0, 20).join('\n') + '\n...\n' + gcode.split('\n').slice(-5).join('\n');
+            document.getElementById('gcode-preview').textContent = preview;
+            document.getElementById('gcode-preview').classList.remove('hidden');
+            document.getElementById('btn-download-gcode').disabled = false;
+
+            showStatus('gcode-status', `✓ G-Code generated! ${signalData.rows} lines, dt=${dt.toFixed(4)}s`, 'success');
+        });
+
+        document.getElementById('btn-download-gcode').addEventListener('click', () => {
+            const blob = new Blob([generatedGCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'hexapod_motion.gcode';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // ========== ANIMATION ==========
+        let animationLoaded = false;
+
+        document.getElementById('btn-load-animation').addEventListener('click', () => {
+            if (!signalData) {
+                alert('Please upload data first');
+                return;
+            }
+
+            animationLoaded = true;
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-pause').disabled = false;
+            document.getElementById('btn-load-animation').textContent = '✓ Animation Ready';
+            document.getElementById('btn-load-animation').style.background = '#2ea043';
+        });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            if (!animationLoaded || isPlaying) return;
+
+            isPlaying = true;
+            document.getElementById('btn-play').disabled = true;
+            document.getElementById('btn-pause').disabled = false;
+
+            function animateFrame() {
+                if (!isPlaying) return;
+
+                currentIndex++;
+                if (currentIndex >= signalData.time.length) currentIndex = 0;
+
+                timeSlider.value = currentIndex;
+                updateTimeDisplay();
+                updateSignalChartMarker();
+                updateHexapodVisualization();
+
+                animationFrameId = setTimeout(animateFrame, 50);
+            }
+
+            animateFrame();
+        });
+
+        document.getElementById('btn-pause').addEventListener('click', () => {
+            isPlaying = false;
+            if (animationFrameId) {
+                clearTimeout(animationFrameId);
+                animationFrameId = null;
+            }
+            document.getElementById('btn-play').disabled = false;
+            document.getElementById('btn-pause').disabled = true;
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (isPlaying) {
+                    document.getElementById('btn-pause').click();
+                } else if (animationLoaded) {
+                    document.getElementById('btn-play').click();
+                }
+            } else if (e.key === 'ArrowRight' && !isPlaying && signalData) {
+                currentIndex = Math.min(currentIndex + 1, signalData.time.length - 1);
+                timeSlider.value = currentIndex;
+                updateTimeDisplay();
+                updateSignalChartMarker();
+                updateHexapodVisualization();
+            } else if (e.key === 'ArrowLeft' && !isPlaying && signalData) {
+                currentIndex = Math.max(currentIndex - 1, 0);
+                timeSlider.value = currentIndex;
+                updateTimeDisplay();
+                updateSignalChartMarker();
+                updateHexapodVisualization();
+            }
+        });
+
+        // ========== TAB SWITCHING ==========
+        const tabUpload = document.getElementById('tab-upload');
+        const tabCreate = document.getElementById('tab-create');
+        const panelUpload = document.getElementById('panel-upload');
+        const panelCreate = document.getElementById('panel-create');
+
+        tabUpload.addEventListener('click', () => {
+            tabUpload.className = 'btn btn-primary';
+            tabCreate.className = 'btn btn-secondary';
+            panelUpload.classList.remove('hidden');
+            panelCreate.classList.add('hidden');
+        });
+
+        tabCreate.addEventListener('click', () => {
+            tabCreate.className = 'btn btn-primary';
+            tabUpload.className = 'btn btn-secondary';
+            panelCreate.classList.remove('hidden');
+            panelUpload.classList.add('hidden');
+        });
+
+        // ========== PAGE NAVIGATION ==========
+        document.getElementById('page-signal-analysis').addEventListener('click', () => {
+            document.getElementById('page-signal-analysis').className = 'btn btn-primary';
+            document.getElementById('page-system-id').className = 'btn btn-secondary';
+            document.getElementById('page-content-signal').classList.remove('hidden');
+            document.getElementById('page-content-sysid').classList.add('hidden');
+        });
+
+        document.getElementById('page-system-id').addEventListener('click', () => {
+            document.getElementById('page-system-id').className = 'btn btn-primary';
+            document.getElementById('page-signal-analysis').className = 'btn btn-secondary';
+            document.getElementById('page-content-sysid').classList.remove('hidden');
+            document.getElementById('page-content-signal').classList.add('hidden');
+        });
+
+        // ========== SYSTEM IDENTIFICATION ==========
+        const sysidInputZone = document.getElementById('sysid-input-zone');
+        const sysidOutputZone = document.getElementById('sysid-output-zone');
+        const sysidInputFile = document.getElementById('sysid-input-file');
+        const sysidOutputFile = document.getElementById('sysid-output-file');
+
+        sysidInputZone.addEventListener('click', () => sysidInputFile.click());
+        sysidInputZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            sysidInputZone.classList.add('dragover');
+        });
+        sysidInputZone.addEventListener('dragleave', () => sysidInputZone.classList.remove('dragover'));
+        sysidInputZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            sysidInputZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sysidInputData = parseCSV(e.target.result);
+                    document.getElementById('sysid-input-filename').textContent = `✓ ${file.name}`;
+                };
+                reader.readAsText(file);
+            }
+        });
+        sysidInputFile.addEventListener('change', () => {
+            if (sysidInputFile.files.length) {
+                const file = sysidInputFile.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sysidInputData = parseCSV(e.target.result);
+                    document.getElementById('sysid-input-filename').textContent = `✓ ${file.name}`;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        sysidOutputZone.addEventListener('click', () => sysidOutputFile.click());
+        sysidOutputZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            sysidOutputZone.classList.add('dragover');
+        });
+        sysidOutputZone.addEventListener('dragleave', () => sysidOutputZone.classList.remove('dragover'));
+        sysidOutputZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            sysidOutputZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sysidOutputData = parseCSV(e.target.result);
+                    document.getElementById('sysid-output-filename').textContent = `✓ ${file.name}`;
+                };
+                reader.readAsText(file);
+            }
+        });
+        sysidOutputFile.addEventListener('change', () => {
+            if (sysidOutputFile.files.length) {
+                const file = sysidOutputFile.files[0];
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    sysidOutputData = parseCSV(e.target.result);
+                    document.getElementById('sysid-output-filename').textContent = `✓ ${file.name}`;
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('btn-calculate-matrix').addEventListener('click', () => {
+            if (!sysidInputData || !sysidOutputData) {
+                showStatus('sysid-status', 'Please upload both input and output files', 'error');
+                return;
+            }
+
+            showStatus('sysid-status', 'Calculating transformation matrix...', 'info');
+
+            const gainX = sysidOutputData.AccX.reduce((sum, val, i) => sum + val, 0) / sysidInputData.AccX.reduce((sum, val) => sum + val, 0);
+            const gainY = sysidOutputData.AccY.reduce((sum, val, i) => sum + val, 0) / sysidInputData.AccY.reduce((sum, val) => sum + val, 0);
+            const gainZ = sysidOutputData.AccZ.reduce((sum, val, i) => sum + val, 0) / sysidInputData.AccZ.reduce((sum, val) => sum + val, 0);
+
+            const compX = 1 / gainX;
+            const compY = 1 / gainY;
+            const compZ = 1 / gainZ;
+
+            document.getElementById('gain-x').textContent = gainX.toFixed(4);
+            document.getElementById('gain-y').textContent = gainY.toFixed(4);
+            document.getElementById('gain-z').textContent = gainZ.toFixed(4);
+
+            const matrixHtml = [
+                `[ ${compX.toFixed(4)}  0.0000  0.0000 ]`,
+                `[ 0.0000  ${compY.toFixed(4)}  0.0000 ]`,
+                `[ 0.0000  0.0000  ${compZ.toFixed(4)} ]`
+            ].join('<br>');
+            document.getElementById('matrix-display').innerHTML = matrixHtml;
+
+            let interpretation = '';
+            if (compX > 1.1) interpretation += `X-axis is weak (gain ${gainX.toFixed(2)}), multiply input by ${compX.toFixed(2)}. `;
+            else if (compX < 0.9) interpretation += `X-axis is strong (gain ${gainX.toFixed(2)}), multiply input by ${compX.toFixed(2)}. `;
+            else interpretation += `X-axis is well-calibrated. `;
+
+            if (compY > 1.1) interpretation += `Y-axis is weak (gain ${gainY.toFixed(2)}), multiply input by ${compY.toFixed(2)}. `;
+            else if (compY < 0.9) interpretation += `Y-axis is strong (gain ${gainY.toFixed(2)}), multiply input by ${compY.toFixed(2)}. `;
+            else interpretation += `Y-axis is well-calibrated. `;
+
+            if (compZ > 1.1) interpretation += `Z-axis is weak (gain ${gainZ.toFixed(2)}), multiply input by ${compZ.toFixed(2)}.`;
+            else if (compZ < 0.9) interpretation += `Z-axis is strong (gain ${gainZ.toFixed(2)}), multiply input by ${compZ.toFixed(2)}.`;
+            else interpretation += `Z-axis is well-calibrated.`;
+
+            document.getElementById('matrix-interpretation').textContent = interpretation;
+            document.getElementById('sysid-results').classList.remove('hidden');
+
+            showStatus('sysid-status', '✓ Transformation matrix calculated!', 'success'
